@@ -460,12 +460,20 @@ def simulate_batch(
             for i in idxs:
                 run_single(i)
             return
+        parent_failed = str(parent.get("status")).upper() in ("ERROR", "FAIL", "FAILED")
         for i, child_id in zip(idxs, children):
             try:
                 sim = wait_simulation(child_id, timeout, c)
-                finish(i, _result(payloads[i], sim, c, fetch_alpha, {"parent_simulation_id": parent.get("id") or started["simulation_id"]}))
+                res = _result(payloads[i], sim, c, fetch_alpha, {"parent_simulation_id": parent.get("id") or started["simulation_id"]})
             except Exception as exc:  # noqa: BLE001
-                finish(i, _error_result(payloads[i], exc))
+                res = _error_result(payloads[i], exc)
+            if parent_failed and not res.get("alpha_id") and not res.get("message") \
+                    and str(res.get("status")).upper() in ("FAIL", "ERROR", "CANCELLED"):
+                # a sibling broke the multi-simulation (parent ERROR, children FAIL/CANCELLED with no reason of their
+                # own): this member was never really evaluated -> run it on its own
+                run_single(i)
+                continue
+            finish(i, res)
         for i in idxs[len(children):]:
             finish(i, {**_error_result(payloads[i], BrainError("missing child simulation")), "status": "ERROR"})
 

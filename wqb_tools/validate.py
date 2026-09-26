@@ -121,10 +121,33 @@ def operator_signatures(client: BrainClient | None = None) -> Dict[str, Dict[str
 
 
 # ------------------------------------------------------------------ field info (shared cache)
+_FIELD_INFO_VERSION = 2
+
+
+def _listed_type(c: BrainClient, field_id: str, dataset_id: str | None, region: str, delay: int,
+                 universe: str) -> Optional[str]:
+    """Type of a field as the dataset listing reports it (None if not found / request failed)."""
+    if not dataset_id:
+        return None
+    try:
+        res = c.get("/data-fields", params={"instrumentType": "EQUITY", "region": region, "delay": delay,
+                                            "universe": universe, "dataset.id": dataset_id, "search": field_id,
+                                            "limit": 50}, raise_on_error=False)
+    except BrainError:
+        return None
+    rows = (res.get("results") or []) if isinstance(res, dict) else []
+    for row in rows:
+        if row.get("id") == field_id:
+            return row.get("type")
+    return None
+
+
 def field_info(fields: Iterable[str], region: str = "USA", delay: int = 1, universe: str = "TOP3000",
                client: BrainClient | None = None) -> Dict[str, Optional[Dict[str, Any]]]:
     """{field: {'type', 'dataset', 'available', 'description'} | None if the id is not a data field}.
-    Uses GET /data-fields/{id}; results are cached on disk (availability is evaluated for the given scope)."""
+    Uses GET /data-fields/{id}; results are cached on disk (availability is evaluated for the given scope).
+    The detail endpoint reports some event-data fields as MATRIX while the dataset listing (and the simulator) treat
+    them as VECTOR, so the type is cross-checked against the listing and the listing wins."""
     c = client or get_client()
     path = c.cache_dir / "field_info.json"
     try:
@@ -134,6 +157,8 @@ def field_info(fields: Iterable[str], region: str = "USA", delay: int = 1, unive
     out, changed = {}, False
     for f in dict.fromkeys(fields):
         entry = cache.get(f, "missing")
+        if isinstance(entry, dict) and entry.get("v") != _FIELD_INFO_VERSION:
+            entry = "missing"   # cached before the type cross-check existed
         if entry == "missing":
             try:
                 info = c.get(f"/data-fields/{f}", params={"instrumentType": "EQUITY", "region": region, "delay": delay,
@@ -141,8 +166,9 @@ def field_info(fields: Iterable[str], region: str = "USA", delay: int = 1, unive
             except BrainError:
                 info = None
             if isinstance(info, dict) and info.get("id"):
-                entry = {"type": info.get("type"), "dataset": (info.get("dataset") or {}).get("id"),
-                         "description": (info.get("description") or "")[:200],
+                ds = (info.get("dataset") or {}).get("id")
+                entry = {"v": _FIELD_INFO_VERSION, "type": _listed_type(c, f, ds, region, delay, universe) or info.get("type"),
+                         "dataset": ds, "description": (info.get("description") or "")[:200],
                          "scopes": [[d.get("region"), d.get("delay"), d.get("universe")] for d in info.get("data") or []]}
             else:
                 entry = None
@@ -438,7 +464,7 @@ def validate_expression(
                 arg_kinds.append(k)
                 if k == "vector" and not name.startswith("vec_"):
                     errors.append(f"{label}: vector field passed directly; reduce it first with vec_avg/vec_sum/... "
-                                  f"(platform error 'Invalid data field')")
+                                  f"(platform error 'Invalid data field' / 'does not support event inputs')")
                 if k == "group" and name not in ("densify",) and name not in GROUP_RETURNING:
                     warnings.append(f"{label}: grouping field used as data")
         if name.startswith("vec_"):

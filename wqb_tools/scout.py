@@ -21,7 +21,10 @@ _CALENDAR = re.compile(r"\b(week number|month code|quarter code|market regime|re
 # name tokens that indicate metadata (dates, ids, timestamps, share counts, period types)
 _JUNK_TOKENS = {"date", "time", "timestamp", "period", "type", "id", "ticker", "isin", "cusip", "sedol", "ric", "code",
                 "shares", "call", "received", "receivetime", "wqreceivetime", "week", "month", "regime", "epoch", "year"}
-_JUNK_SUBSTR = ("periodend", "yearend", "periodtype", "sharesoutstanding", "receivetime", "fiscalyear")
+_JUNK_SUBSTR = ("periodend", "yearend", "periodtype", "sharesoutstanding", "receivetime", "fiscalyear", "companyname",
+                "company_name", "unit_name", "mktcap", "market_cap")
+# identifier / classification columns that vendors repeat inside signal datasets (<prefix>_sector, <prefix>_sub_industry)
+_JUNK_SUFFIX = re.compile(r"_(name|sector|industry|sub_industry|subindustry|country|currency|exchange)$", re.I)
 _PREFER = re.compile(r"\b(prob\w*|predict\w*|forecast\w*|score|signal|sentiment|ratio|margin|yield|return on|growth|"
                      r"percent\w*|rank|surprise|revision\w*|confidence|expected return|estimate)", re.I)
 _RAW_AMOUNT = re.compile(r"^(quarterly |annual |total )?(revenue|net income|earnings before|ebit\w*|sales|assets|"
@@ -38,7 +41,8 @@ def is_market_wide(description: str) -> bool:
 
 def is_metadata(field_id: str) -> bool:
     toks = set(re.split(r"[_\d]+", field_id.lower()))
-    return bool(toks & _JUNK_TOKENS) or any(s in field_id.lower() for s in _JUNK_SUBSTR)
+    return (bool(toks & _JUNK_TOKENS) or any(s in field_id.lower() for s in _JUNK_SUBSTR)
+            or bool(_JUNK_SUFFIX.search(field_id)))
 
 
 def field_priority(f: Dict[str, Any]) -> float:
@@ -109,17 +113,45 @@ def field_families(dataset_id: str, region: str = "USA", delay: int = 1, univers
     return sorted(out, key=lambda r: -r["priority"])
 
 
+def concept_key(field_id: str) -> str:
+    """The underlying metric of a field id, with window / horizon / version suffixes removed:
+    'put_call_volume_ratio_30d_short_term_2' -> 'put_call_volume_ratio', 'implied_volatility_30d_rank_long_term' ->
+    'implied_volatility_rank', 'straddle_move_percent_7' -> 'straddle_move_percent'."""
+    k = re.sub(r"_(short|medium|long)(_term)?(?=_|$)", "", field_id.lower())
+    k = re.sub(r"_(\d+[dwmy]|all|\d+)(?=_|$)", "", k)
+    return k
+
+
+def field_concepts(dataset_id: str, region: str = "USA", delay: int = 1, universe: str = "TOP3000",
+                   client: BrainClient | None = None) -> List[Dict[str, Any]]:
+    """Collapse a dataset's field families into distinct concepts (see concept_key) - datasets that publish one metric
+    at many windows / horizons (e.g. 500 families but ~25 real metrics) become readable.
+    Each: {concept, n, coverage, type, fields: [representative ids, best first], description}."""
+    groups: Dict[str, List[Dict[str, Any]]] = {}
+    for f in field_families(dataset_id, region, delay, universe, client):
+        groups.setdefault(concept_key(f["representative"]), []).append(f)
+    out = []
+    for k, fs in groups.items():
+        fs = sorted(fs, key=lambda f: -(f.get("coverage") or 0))
+        out.append({"concept": k, "n": len(fs), "coverage": fs[0].get("coverage"), "type": fs[0].get("type"),
+                    "fields": [f["representative"] for f in fs], "description": fs[0].get("description"),
+                    "market_wide": fs[0]["market_wide"], "metadata": fs[0]["metadata"]})
+    return sorted(out, key=lambda c: -(c["coverage"] or 0))
+
+
 def representative_fields(dataset_id: str, region: str = "USA", delay: int = 1, universe: str = "TOP3000", *,
                           n: int = 16, min_coverage: float = 0.6, types: Iterable[str] = ("MATRIX", "VECTOR"),
                           include: Iterable[str] = (), keyword: str | None = None, per_stem: int = 2,
-                          client: BrainClient | None = None) -> List[Dict[str, Any]]:
+                          per_concept: int = 2, client: BrainClient | None = None) -> List[Dict[str, Any]]:
     """Up to n screening-ready fields: one per family, highest priority first; drops market-wide / calendar and
     metadata fields (dates, ids, timestamps, share counts), low coverage and disallowed types; at most `per_stem`
-    fields whose ids differ only by digits (e.g. img120d_q2_* vs img120d_q5_*). keyword: regex filter on id+description.
+    fields whose ids differ only by digits (e.g. img120d_q2_* vs img120d_q5_*) and at most `per_concept` fields of the
+    same concept (window / horizon variants, see concept_key). keyword: regex filter on id+description.
     Each has 'term' = the field expression to plug into templates (vector fields wrapped in vec_avg)."""
     fams = field_families(dataset_id, region, delay, universe, client)
     keep = [f for f in fams if f["representative"] in set(include)]
     stems: Dict[str, int] = {}
+    concepts: Dict[str, int] = {}
     kw = re.compile(keyword, re.I) if keyword else None
     for f in fams:
         if len(keep) >= n:
@@ -130,9 +162,11 @@ def representative_fields(dataset_id: str, region: str = "USA", delay: int = 1, 
         if kw and not kw.search(f"{f['representative']} {f['description']}"):
             continue
         stem = re.sub(r"\d+", "#", f["representative"])
-        if stems.get(stem, 0) >= per_stem:
+        concept = concept_key(f["representative"])
+        if stems.get(stem, 0) >= per_stem or concepts.get(concept, 0) >= per_concept:
             continue
         stems[stem] = stems.get(stem, 0) + 1
+        concepts[concept] = concepts.get(concept, 0) + 1
         keep.append(f)
     for f in keep:
         f["term"] = f"vec_avg({f['representative']})" if str(f["type"]).upper() == "VECTOR" else f["representative"]

@@ -344,6 +344,9 @@ def build_parser() -> argparse.ArgumentParser:
     _add_scope(p)
     p.add_argument("--n", type=int, default=16)
     p.add_argument("--keyword", help="regex on id + description")
+    p = cmd("concepts", "distinct metrics of a dataset (field families with window/horizon variants collapsed)")
+    p.add_argument("dataset")
+    _add_scope(p)
     p = cmd("experiment", "validated, ledger-logged batch simulation (file: .txt/.json/.jsonl like 'batch')")
     p.add_argument("file")
     p.add_argument("--tag", required=True)
@@ -587,6 +590,8 @@ def run(a: argparse.Namespace) -> Any:
         return W.scout_datasets(a.region, a.delay, a.universe, purpose=a.purpose, exclude=a.exclude, top=a.top)
     if cmd == "rep-fields":
         return W.representative_fields(a.dataset, a.region, a.delay, a.universe, n=a.n, keyword=a.keyword)
+    if cmd == "concepts":
+        return W.field_concepts(a.dataset, a.region, a.delay, a.universe)
     if cmd == "experiment":
         items = _read_items(a.file)
         st = _settings(a)

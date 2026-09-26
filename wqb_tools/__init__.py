@@ -42,13 +42,14 @@ from .corr import (correlation, correlation_matrix, daily_returns, is_pure_power
                    pnl_series, power_pool_correlation, self_correlation, submitted_pool)
 from .runner import (Ledger, default_ledger, find_tried, metrics_row, results_table, run_experiment,
                      simulation_quota)
-from .scout import field_families, is_market_wide, is_metadata, representative_fields, scout_datasets
-from .builder import build_combos, screen_fields, sweep
+from .scout import (concept_key, field_concepts, field_families, is_market_wide, is_metadata, representative_fields,
+                    scout_datasets)
+from .builder import build_combos, screen_fields, signal_correlations, sweep
 from .quality import compare_robustness, robustness_report
 from .readiness import active_rules, check_description, draft_pp_description, submission_readiness
 from .utils import html_to_text, recordset_to_dicts, to_csv
 
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 
 
 def login(email: str | None = None, password: str | None = None, force: bool = False):

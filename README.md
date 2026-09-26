@@ -345,10 +345,12 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.find_tried(field=, text=, tag=, min_sharpe=, region=)` / `W.Ledger(path)` / `W.default_ledger()` | 查询实验日志 | Query the experiment ledger |
 | `W.simulation_quota()` | 当日模拟额度 | Daily simulation quota |
 | `W.scout_datasets(region, delay, universe, purpose=, exclude=[])` | 数据集打分排序 | Rank datasets |
-| `W.representative_fields(ds, ..., n=16, keyword=None)` / `W.field_families(ds, ...)` | 挑选代表字段 / 字段族 | Representative fields / field families |
+| `W.representative_fields(ds, ..., n=16, keyword=None, per_concept=2)` / `W.field_families(ds, ...)` | 挑选代表字段 / 字段族 | Representative fields / field families |
+| `W.field_concepts(ds, ...)` / `W.concept_key(field_id)` | 把同一指标的不同窗口、期限变体归并为一个概念 | Collapse window / horizon variants of a metric into one concept |
 | `W.is_market_wide(desc)` / `W.is_metadata(field_id)` | 字段过滤规则 | Field filters |
 | `W.screen_fields(terms, tag, templates=None, **run_kwargs)` | 批量筛选信号（自动翻转方向） | Screen signals (automatic sign flip) |
 | `W.build_combos(signals, sizes=(2,3), max_fields=3, max_ops=8)` | 构造信号组合 | Build signal combinations |
+| `W.signal_correlations(signals)` | 信号之间的本地相关性（已按翻转方向修正），用于挑选互补的信号 | Local correlation between screened signals, adjusted for sign flips |
 | `W.sweep(expr, tag, grid, **run_kwargs)` | 参数网格扫描 | Parameter grid sweep |
 | `W.robustness_report(id)` / `W.compare_robustness(ids)` | 稳健性报告与质量分 | Robustness report and quality score |
 | `W.submission_readiness(ids, purpose=, quota_left=None)` | 提交就绪评估与推荐顺序 | Submission readiness and recommended order |
@@ -381,7 +383,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |
 | Power Pool 与相关性 / Power Pool & correlation | `pp-budget` `pp-classify` `corr-matrix` `self-corr-local` `submit-order` |
-| 研究工作流 / Research workflow | `scout` `rep-fields` `experiment` `tried` `quota` `robustness` `readiness` `rules` `desc-draft` `desc-check` |
+| 研究工作流 / Research workflow | `scout` `rep-fields` `concepts` `experiment` `tried` `quota` `robustness` `readiness` `rules` `desc-draft` `desc-check` |
 | 通用 / Generic | `raw` |
 
 `batch` 和 `experiment` 的输入文件支持 `.txt`（每行一个表达式）、`.json`（列表）和 `.jsonl`（每行一个 JSON）。
