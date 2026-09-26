@@ -1,0 +1,7 @@
+# credentials and runtime data - never commit
+credentials.json
+.cache/
+tests/smoke_report.json
+*.jsonl
+__pycache__/
+*.pyc

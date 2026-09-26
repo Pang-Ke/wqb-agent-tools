@@ -1,0 +1,2 @@
+# No third-party dependencies: wqb_tools uses only the Python (>= 3.9) standard library.
+# Optional: `certifi` is used for TLS certificates if installed (only needed on Pythons without system CA certs).
