@@ -3,6 +3,16 @@
 **WorldQuant BRAIN 研究工具包：可供 AI agent 调用，也可在 Python 和命令行中直接使用。**
 **A WorldQuant BRAIN research toolkit for AI agents, Python scripts and the command line.**
 
+### 给 agent 一套工具，让它自己去研究 / Give an agent the tools. Let it do the research.
+
+这里没有预设的复杂工作流，只有一组干净、可靠的基础函数，覆盖 BRAIN 平台的各项操作。把它交给任意一个通用 agent，它就能自己查数据、写表达式、跑模拟、看结果，不断迭代。
+
+No pre-built workflows — just a clean, reliable set of basic functions covering what the BRAIN platform offers. Hand it to any general-purpose agent and it can look up data, write expressions, run simulations, read the results and iterate on its own.
+
+| 只做基础 / Basics only | 任意 agent 可用 / Works with any agent | 拿来即用 / Drop-in |
+|---|---|---|
+| 每个函数只做一件事，研究思路和流程交给 agent 自己决定。<br>Each function does one thing; the research strategy is left to the agent. | Python 调用或命令行调用都可以，返回 JSON，模型易读易用。<br>Call it from Python or the command line; JSON output that models read easily. | 只依赖标准库，复制到任何环境，填好账号即可运行。<br>Standard library only; copy it anywhere, add credentials, run. |
+
 ---
 
 ## 目录 / Contents
