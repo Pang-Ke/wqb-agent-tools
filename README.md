@@ -348,7 +348,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.representative_fields(ds, ..., n=16, keyword=None, per_concept=2)` / `W.field_families(ds, ...)` | 挑选代表字段 / 字段族 | Representative fields / field families |
 | `W.field_concepts(ds, ...)` / `W.concept_key(field_id)` | 把同一指标的不同窗口、期限变体归并为一个概念 | Collapse window / horizon variants of a metric into one concept |
 | `W.is_market_wide(desc)` / `W.is_metadata(field_id)` | 字段过滤规则 | Field filters |
-| `W.screen_fields(terms, tag, templates=None, **run_kwargs)` | 批量筛选信号（自动翻转方向） | Screen signals (automatic sign flip) |
+| `W.screen_fields(terms, tag, templates=None, verify_flips="auto", **run_kwargs)` | 批量筛选信号（自动翻转方向；在计交易成本的地区如 CHN，会重新回测翻转后的信号，因为取反的 Sharpe 会高估） | Screen signals (automatic sign flip; in cost-charging regions such as CHN flipped signals are re-simulated, since negating the Sharpe overstates them) |
 | `W.build_combos(signals, sizes=(2,3), max_fields=3, max_ops=8, nan_safe="auto")` | 构造信号组合（常规 alpha 默认使用 NaN 安全写法） | Build signal combinations (NaN-safe by default for regular alphas) |
 | `W.nan_safe_sum(terms, weights=None)` | 不丢覆盖率的组合写法：`add(a - 0.5, b - 0.5, filter = true)`；普通的 `rank(a) + rank(b)` 只要一条腿缺失就会丢掉这只股票 | Coverage-preserving combination; plain `rank(a) + rank(b)` drops a stock whenever any leg is missing |
 | `W.signal_correlations(signals)` | 信号之间的本地相关性（已按翻转方向修正），用于挑选互补的信号 | Local correlation between screened signals, adjusted for sign flips |

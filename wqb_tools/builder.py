@@ -19,11 +19,20 @@ def _signal_expr(inner: str, sign: int) -> str:
     return f"rank({'-' if sign < 0 else ''}{inner})"
 
 
+# regions whose simulations charge trading costs: a flipped signal is NOT the mirror image of the raw one there
+# (raw = -edge - cost, flipped = +edge - cost). Observed in CHN: raw -4.26 -> flipped +1.32.
+COST_REGIONS = {"CHN"}
+
+
 def screen_fields(terms: Sequence[Any], tag: str, *, templates: Dict[str, str] | None = None, bk: int = 120, w: int = 63,
-                  zw: int = 126, flip_threshold: float = 0.3, **run_kwargs: Any) -> List[Dict[str, Any]]:
+                  zw: int = 126, flip_threshold: float = 0.3, verify_flips: Any = "auto", verify_min: float = 0.5,
+                  **run_kwargs: Any) -> List[Dict[str, Any]]:
     """Simulate every (term x template) as rank(inner); return signals sorted by |Sharpe|, each with
     {'term', 'template', 'inner', 'sign' (+1/-1: flipped when Sharpe <= -flip_threshold), 'expr' (signed), row metrics}.
-    terms: field ids / 'vec_avg(x)' strings, or dicts with 'term' (as returned by scout.representative_fields)."""
+    terms: field ids / 'vec_avg(x)' strings, or dicts with 'term' (as returned by scout.representative_fields).
+    verify_flips: re-simulate flipped signals with |Sharpe| >= verify_min as rank(-inner) and rank by the real result
+    (keys 'verified_sharpe' / 'verified_alpha_id' / ...; 'alpha_id' stays the raw run so sign-adjusting helpers keep
+    working). 'auto' = on in COST_REGIONS, where negating the Sharpe overstates flipped signals."""
     tpls = templates or DEFAULT_TEMPLATES
     plan = []
     for t in terms:
@@ -45,6 +54,17 @@ def screen_fields(terms: Sequence[Any], tag: str, *, templates: Dict[str, str] |
                     "abs_sharpe": abs(s), "signed_sharpe": round(s * sign, 2), "term": term, "template": name,
                     "inner": inner, "sign": sign,
                     "expr": _signal_expr(inner, sign)})
+    verify = (str(run_kwargs.get("region", "USA")).upper() in COST_REGIONS) if verify_flips == "auto" else bool(verify_flips)
+    todo = [s for s in out if s["sign"] < 0 and s["abs_sharpe"] >= verify_min] if verify else []
+    if todo:
+        vrows = {r.get("expr"): r for r in run_experiment([s["expr"] for s in todo], f"{tag}_flipcheck", **run_kwargs)}
+        for s in todo:
+            r = vrows.get(s["expr"]) or {}
+            if r.get("sharpe") is None:
+                continue
+            s.update(verified_sharpe=r["sharpe"], verified_fitness=r.get("fitness"), verified_turnover=r.get("turnover"),
+                     verified_sub=r.get("sub"), verified_test_sharpe=r.get("test_sharpe"),
+                     verified_alpha_id=r.get("alpha_id"), abs_sharpe=abs(r["sharpe"]), signed_sharpe=r["sharpe"])
     return sorted(out, key=lambda x: -x["abs_sharpe"])
 
 
