@@ -79,6 +79,42 @@ def robustness_report(alpha_id: str, client: BrainClient | None = None) -> Dict[
             "investability_ratio": inv_ratio, "flags": flags, "quality_score": round(score, 1)}
 
 
+def recent_strength(items: Sequence[Any], years: Optional[Sequence[int]] = None, workers: int = 6,
+                    client: BrainClient | None = None) -> List[Dict[str, Any]]:
+    """Rank alphas / screened signals by their Sharpe in the most recent in-sample years - the window the IS ladder
+    test (IS_LADDER_SHARPE) checks first. Full-period Sharpe hides decay; a leg that is weak overall but strong in the
+    last years is what fixes a ladder failure.
+    items: alpha ids, or signal dicts with 'alpha_id' (+ optional 'sign' / 'expr', as returned by screen_fields;
+    flipped signals get sign-adjusted Sharpes). years: default = the last 2 in-sample years of each alpha.
+    Returns rows {alpha_id, expr, sign, yearly, recent (mean over `years`), years, test_sharpe}, best recent first."""
+    from concurrent.futures import ThreadPoolExecutor
+
+    from .alphas import get_alpha, get_yearly_stats
+
+    c = client or get_client()
+    sigs = [{"alpha_id": x} if isinstance(x, str) else x for x in items]
+
+    def one(s: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        aid, sign = s.get("alpha_id"), (s.get("sign") or 1)
+        if not aid:
+            return None
+        try:
+            ys = {int(y["year"]): y["sharpe"] * sign for y in get_yearly_stats(aid, c)
+                  if y.get("stage") not in ("OS", "PROD") and isinstance(y.get("sharpe"), (int, float))}
+            test = ((get_alpha(aid, c).get("test") or {}).get("sharpe"))
+        except Exception:  # noqa: BLE001
+            return None
+        win = list(years) if years else sorted(ys)[-2:]
+        vals = [ys[y] for y in win if y in ys]
+        return {"alpha_id": aid, "expr": s.get("expr"), "sign": sign, "yearly": ys, "years": win,
+                "recent": round(sum(vals) / len(vals), 2) if vals else None,
+                "test_sharpe": None if test is None else round(test * sign, 2)}
+
+    with ThreadPoolExecutor(max(1, workers)) as ex:
+        rows = [r for r in ex.map(one, sigs) if r]
+    return sorted(rows, key=lambda r: -(r["recent"] if r["recent"] is not None else -9))
+
+
 def compare_robustness(alpha_ids: Sequence[str], client: BrainClient | None = None) -> List[Dict[str, Any]]:
     """robustness_report for several alphas, best quality first."""
     return sorted((robustness_report(a, client) for a in dict.fromkeys(alpha_ids)), key=lambda r: -r["quality_score"])

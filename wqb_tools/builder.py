@@ -52,12 +52,27 @@ def _field_of(term: str) -> str:
     return term[len("vec_avg("):-1] if term.startswith("vec_avg(") else term
 
 
+def nan_safe_sum(terms: Sequence[str], weights: Optional[Sequence[float]] = None) -> str:
+    """Combine rank-scaled legs without losing coverage: add(w1 * (a - 0.5), b - 0.5, ..., filter = true).
+    A plain 'rank(a) + rank(b)' is NaN wherever any leg is NaN, so adding a low-coverage leg silently shrinks the book
+    to the intersection of all legs (seen: 3061 -> 79 positions). Centred legs + filter=true treat a missing leg as
+    neutral (0) instead. Terms should be in [0, 1] (rank / scale-free)."""
+    parts = []
+    for i, t in enumerate(terms):
+        w = weights[i] if weights and i < len(weights) else 1
+        parts.append(f"{t} - 0.5" if w == 1 else f"{w} * ({t} - 0.5)")
+    return parts[0] if len(parts) == 1 else f"add({', '.join(parts)}, filter = true)"
+
+
 def build_combos(signals: Sequence[Dict[str, Any]], *, top: int = 6, sizes: Iterable[int] = (2, 3), max_fields: int = 3,
                  max_ops: int = 8, min_abs_sharpe: float = 0.4, distinct_fields: bool = True,
-                 weights: Optional[Sequence[float]] = None, limit: int = 20) -> List[str]:
+                 weights: Optional[Sequence[float]] = None, limit: int = 20, nan_safe: Any = "auto") -> List[str]:
     """Rank-sum combinations of the strongest signals: sum of signed rank(inner) terms.
     Keeps combos within the Power Pool budget (<= max_fields unique fields, <= max_ops operators excl. backfills),
-    optionally with distinct underlying fields. Ordered by the sum of component |Sharpe| (a cheap prior)."""
+    optionally with distinct underlying fields. Ordered by the sum of component |Sharpe| (a cheap prior).
+    nan_safe: combine with nan_safe_sum (keeps stocks where some legs are missing). 'auto' = on when max_ops > 8
+    (regular alphas); off for the Power Pool budget, where the extra '- 0.5' operators would not fit."""
+    safe = (max_ops > 8) if nan_safe == "auto" else bool(nan_safe)
     pool = [s for s in signals if s["abs_sharpe"] >= min_abs_sharpe][:top]
     combos = []
     for k in sizes:
@@ -67,11 +82,14 @@ def build_combos(signals: Sequence[Dict[str, Any]], *, top: int = 6, sizes: Iter
                 continue
             if len(fields) > max_fields:
                 continue
-            parts = []
-            for i, s in enumerate(group):
-                wgt = (weights[i] if weights and i < len(weights) else 1)
-                parts.append((f"{wgt} * " if wgt != 1 else "") + s["expr"])
-            expr = " + ".join(parts)
+            if safe:
+                expr = nan_safe_sum([s["expr"] for s in group], weights)
+            else:
+                parts = []
+                for i, s in enumerate(group):
+                    wgt = (weights[i] if weights and i < len(weights) else 1)
+                    parts.append((f"{wgt} * " if wgt != 1 else "") + s["expr"])
+                expr = " + ".join(parts)
             if operator_count(expr)["pp"] > max_ops:
                 continue
             combos.append((sum(s["abs_sharpe"] for s in group), expr))

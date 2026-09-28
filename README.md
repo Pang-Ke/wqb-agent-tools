@@ -349,10 +349,12 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.field_concepts(ds, ...)` / `W.concept_key(field_id)` | 把同一指标的不同窗口、期限变体归并为一个概念 | Collapse window / horizon variants of a metric into one concept |
 | `W.is_market_wide(desc)` / `W.is_metadata(field_id)` | 字段过滤规则 | Field filters |
 | `W.screen_fields(terms, tag, templates=None, **run_kwargs)` | 批量筛选信号（自动翻转方向） | Screen signals (automatic sign flip) |
-| `W.build_combos(signals, sizes=(2,3), max_fields=3, max_ops=8)` | 构造信号组合 | Build signal combinations |
+| `W.build_combos(signals, sizes=(2,3), max_fields=3, max_ops=8, nan_safe="auto")` | 构造信号组合（常规 alpha 默认使用 NaN 安全写法） | Build signal combinations (NaN-safe by default for regular alphas) |
+| `W.nan_safe_sum(terms, weights=None)` | 不丢覆盖率的组合写法：`add(a - 0.5, b - 0.5, filter = true)`；普通的 `rank(a) + rank(b)` 只要一条腿缺失就会丢掉这只股票 | Coverage-preserving combination; plain `rank(a) + rank(b)` drops a stock whenever any leg is missing |
 | `W.signal_correlations(signals)` | 信号之间的本地相关性（已按翻转方向修正），用于挑选互补的信号 | Local correlation between screened signals, adjusted for sign flips |
 | `W.sweep(expr, tag, grid, **run_kwargs)` | 参数网格扫描 | Parameter grid sweep |
 | `W.robustness_report(id)` / `W.compare_robustness(ids)` | 稳健性报告与质量分 | Robustness report and quality score |
+| `W.recent_strength(ids_or_signals, years=None)` | 按最近几年的逐年 Sharpe 排序（已按翻转方向修正），用于解决 IS ladder 失败 | Rank by Sharpe in the latest in-sample years (sign-adjusted); for IS-ladder failures |
 | `W.submission_readiness(ids, purpose=, quota_left=None)` | 提交就绪评估与推荐顺序 | Submission readiness and recommended order |
 | `W.draft_pp_description(id, idea)` / `W.check_description(text, expression, others=[])` | 起草 / 检查 Power Pool 描述 | Draft / check a Power Pool description |
 | `W.active_rules(unsubmitted_alpha_id)` | 当前主题、额度与测试门槛 | Active themes, quotas and test limits |

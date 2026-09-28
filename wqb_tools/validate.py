@@ -105,6 +105,10 @@ def parse_signature(definition: str, name: str) -> Optional[Dict[str, Any]]:
     return sig
 
 
+# documented (and accepted by the simulator) as taking "two or more inputs", but the operator list omits the '...'
+_DOC_VARIADIC = {"add"}
+
+
 def operator_signatures(client: BrainClient | None = None) -> Dict[str, Dict[str, Any]]:
     """{operator name: signature + scope/category}, derived from the live operator list (cached 24h)."""
     from .meta import list_operators
@@ -115,6 +119,8 @@ def operator_signatures(client: BrainClient | None = None) -> Dict[str, Dict[str
         if s is None:  # infix-only definitions such as 'input1 < input2'
             s = {"positional": ["input1", "input2"], "keywords": {}, "order": ["input1", "input2"], "variadic": False,
                  "min_positional": 2}
+        if op["name"] in _DOC_VARIADIC:
+            s["variadic"] = True
         s.update(scope=op.get("scope") or [], category=op.get("category"))
         sigs[op["name"]] = s
     return sigs
