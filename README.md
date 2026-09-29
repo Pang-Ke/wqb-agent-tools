@@ -281,6 +281,11 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.messages(msg_type=None, limit=20)` / `W.messages_summary()` | 公告和通知 / 未读数 | Announcements & notifications / unread counts |
 | `W.competitions(mine=False)` / `W.competition(id)` / `W.competition_board(id, board="leader")` | 比赛列表 / 详情 / 排行榜 | Competitions / details / leaderboard |
 | `W.consultant_board(board="genius")` / `W.competition_levels()` | 顾问排行榜 / 比赛等级 | Consultant boards / competition levels |
+| `W.leaderboard_row(user_id=None, board="leader")` | 自己（或指定用户）在顾问榜单上的那一行，一次请求 | Your (or a user's) row on a consultant board, in one request |
+| `W.value_factor()` | Value Factor、Weight Factor 及平均生产/自相关等 | Value factor, weight factor, mean prod/self correlation |
+| `W.recent_submissions(days=7, since=None)` | 最近提交的 alpha（按平台的美东日期） | Recently submitted alphas (platform days, US Eastern) |
+| `W.submission_days(window_days=91, min_days=20)` | 滚动窗口内的提交天数；少于 20 天 Value Factor 会被重置到最低 | Submission days in the rolling window; fewer than 20 resets the value factor |
+| `W.account_status()` | 一次调用汇总：Genius 等级、本季度统计、VF、提交天数、今日提交数 | One-call summary: genius level, quarter stats, VF, submission days, today's submissions |
 | `W.events(limit=50, upcoming_only=False)` | 活动与讲座 | Events and webinars |
 
 ### 7.7 官方文档 / Documentation (`docs.py`)
@@ -380,7 +385,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | 模拟 / Simulation | `simulate` `payload` `batch` `sim-status` `sim-wait` `sim-cancel` `promote` |
 | Alpha | `alpha` `alphas` `alpha-counts` `recordsets` `recordset` `pnl` `yearly` `check` `corr` `before-after` `update-alpha` `submit` `components` |
 | 标签 / Tags | `tags` `tag` `tag-create` `tag-update` `tag-delete` `tag-corr` |
-| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `osmosis` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
+| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `osmosis` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
 | 文档 / Docs | `docs` `doc` `docs-dump` `examples` `videos` |
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |

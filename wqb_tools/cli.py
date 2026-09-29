@@ -266,6 +266,14 @@ def build_parser() -> argparse.ArgumentParser:
     cmd("streak", "simulation streak")
     cmd("achievements", "achievements")
     cmd("consultant", "consultant / genius summary")
+    cmd("status", "one-call summary: genius level, quarter stats, value factor, submission days, today's submissions")
+    p = cmd("vf", "value factor + weight factor from the consultant leaderboard")
+    p.add_argument("--user", help="another user id (default: you)")
+    p = cmd("sub-days", "distinct submission days in the rolling window vs the 20-day value-factor rule")
+    p.add_argument("--window", type=int, default=91)
+    p = cmd("submitted", "alphas you submitted recently (platform days, US Eastern)")
+    p.add_argument("--days", type=int, default=7, help="1 = today only")
+    p.add_argument("--since", help="YYYY-MM-DD (overrides --days)")
     cmd("osmosis", "osmosis summary")
     p = cmd("messages", "announcements / notifications")
     p.add_argument("--type", choices=["ANNOUNCEMENT", "NOTIFICATION"])
@@ -539,10 +547,17 @@ def run(a: argparse.Namespace) -> Any:
     # account
     simple = {"me": W.me, "pyramids": W.pyramid_overview, "streak": W.streak, "achievements": W.achievements,
               "consultant": W.consultant_summary, "osmosis": W.osmosis_summary, "teams": W.teams,
+              "status": W.account_status,
               "alpha-counts": W.alphas_count_summary, "categories": W.data_categories, "videos": W.video_courses,
               "forum-topics": lambda: f().topics(), "help-categories": lambda: f().categories()}
     if cmd in simple:
         return simple[cmd]()
+    if cmd == "vf":
+        return {k: v for k, v in W.value_factor(a.user).items() if k != "raw"}
+    if cmd == "sub-days":
+        return W.submission_days(a.window)
+    if cmd == "submitted":
+        return W.recent_submissions(a.days, a.since)
     if cmd == "activity":
         return W.activity(a.name, a.date_from)
     if cmd == "diversity":

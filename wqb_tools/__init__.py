@@ -27,10 +27,11 @@ from .alphas import (alphas_count_summary, before_after_performance, check_submi
 from .simulate import (DEFAULT_SETTINGS, build_payload, cache_lookup, cancel_simulation, get_simulation,
                        normalize_settings, promote_to_full, set_default_settings, simulate, simulate_batch,
                        start_simulation, use_account_defaults, validate_payload, wait_simulation)
-from .account import (achievements, activity, agreements, competition, competition_board, competition_levels,
-                      competitions, consultant_board, consultant_summary, diversity, events, me, messages,
-                      messages_summary, osmosis_summary, pyramid_alphas, pyramid_multipliers, pyramid_overview,
-                      simulation_counts, streak, teams, user_profile, whoami)
+from .account import (account_status, achievements, activity, agreements, competition, competition_board,
+                      competition_levels, competitions, consultant_board, consultant_summary, diversity, events,
+                      leaderboard_row, me, messages, messages_summary, osmosis_summary, pyramid_alphas,
+                      pyramid_multipliers, pyramid_overview, recent_submissions, simulation_counts, streak,
+                      submission_days, teams, user_profile, value_factor, whoami)
 from .docs import (docs_index, dump_docs, example_alphas, get_doc_page, get_operator_doc, list_tutorials,
                    search_docs, video_courses)
 from .forum import CN_CONSULTANT_TOPIC, ForumClient, get_forum
@@ -49,7 +50,7 @@ from .quality import compare_robustness, recent_strength, robustness_report
 from .readiness import active_rules, check_description, draft_pp_description, submission_readiness
 from .utils import html_to_text, recordset_to_dicts, to_csv
 
-__version__ = "1.4.1"
+__version__ = "1.5.0"
 
 
 def login(email: str | None = None, password: str | None = None, force: bool = False):

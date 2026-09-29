@@ -133,6 +133,12 @@ def main():
         step("competition_board", lambda: W.competition_board(cid, limit=3), lambda r: "results" in r)
     step("consultant_board(genius)", lambda: W.consultant_board("genius", limit=3), lambda r: "results" in r)
     step("consultant_board(leader)", lambda: W.consultant_board("leader", limit=3), lambda r: "results" in r)
+    step("leaderboard_row(self)", W.leaderboard_row, lambda r: r is not None and "valueFactor" in r)
+    step("leaderboard_row(unknown user)", lambda: W.leaderboard_row("ZZ00000") is None, lambda r: r is True)
+    step("value_factor", W.value_factor, lambda r: "value_factor" in r and "weight_factor" in r)
+    step("recent_submissions", lambda: W.recent_submissions(days=30), lambda r: isinstance(r, list))
+    step("submission_days", W.submission_days, lambda r: {"count", "shortfall", "at_risk"} <= set(r))
+    step("account_status", W.account_status, lambda r: {"genius_level", "value_factor", "submission_days"} <= set(r))
     step("events", lambda: W.events(limit=3), lambda r: isinstance(r, list))
     step("user_profile", lambda: W.user_profile(info["user"]["id"]), lambda r: "id" in r)
 
