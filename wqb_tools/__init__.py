@@ -47,10 +47,10 @@ from .scout import (concept_key, field_concepts, field_families, is_market_wide,
                     scout_datasets)
 from .builder import build_combos, nan_safe_sum, screen_fields, signal_correlations, sweep
 from .quality import compare_robustness, recent_strength, robustness_report
-from .readiness import active_rules, check_description, draft_pp_description, submission_readiness
+from .readiness import active_rules, check_description, draft_pp_description, pp_presubmit, submission_readiness
 from .utils import html_to_text, recordset_to_dicts, to_csv
 
-__version__ = "1.5.0"
+__version__ = "1.5.1"
 
 
 def login(email: str | None = None, password: str | None = None, force: bool = False):

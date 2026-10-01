@@ -20,7 +20,8 @@ _CALENDAR = re.compile(r"\b(week number|month code|quarter code|market regime|re
                        r"(until|to) the end of the (current )?month|day of (the )?week)", re.I)
 # name tokens that indicate metadata (dates, ids, timestamps, share counts, period types)
 _JUNK_TOKENS = {"date", "time", "timestamp", "period", "type", "id", "ticker", "isin", "cusip", "sedol", "ric", "code",
-                "shares", "call", "received", "receivetime", "wqreceivetime", "week", "month", "regime", "epoch", "year"}
+                "shares", "call", "received", "receivetime", "wqreceivetime", "week", "month", "regime", "epoch", "year",
+                "version", "title", "timeofarrival", "arrival"}
 _JUNK_SUBSTR = ("periodend", "yearend", "periodtype", "sharesoutstanding", "receivetime", "fiscalyear", "companyname",
                 "company_name", "unit_name", "mktcap", "market_cap", "tickermap", "currency_of")
 # identifier / classification columns that vendors repeat inside signal datasets (<prefix>_sector, <prefix>_sub_industry)
@@ -45,10 +46,23 @@ def is_metadata(field_id: str) -> bool:
             or bool(_JUNK_SUFFIX.search(field_id)))
 
 
+# model outputs (what a vendor model predicts) vs the engineered inputs some model datasets also publish
+# ('forecast' is deliberately absent: analyst forecasts are raw amounts such as projected EPS / dividends)
+_MODEL_OUTPUT = re.compile(r"\b(probabilit\w*|log-softmax|softmax|model output|model[- ]assigned|predicted (future |forward )?"
+                           r"return\w*|expected return|quantile label|bucket label)\b", re.I)
+_OUTPUT_ID = re.compile(r"(^|_)(prob|bucket\d*|label)(_|\d|$)", re.I)
+_MODEL_INPUT = re.compile(r"\b(engineered (rolling-window )?feature|input feature|greek|delta|gamma|vega|theta|strike|"
+                          r"premium|exercise price)\b", re.I)
+
+
 def field_priority(f: Dict[str, Any]) -> float:
-    """Heuristic usefulness score: coverage + predictive-sounding description - raw size amounts."""
+    """Heuristic usefulness score: coverage + predictive-sounding description - raw size amounts; model outputs
+    (probabilities / predictions) rank above the engineered input features published alongside them."""
     d = f.get("description") or ""
-    return ((f.get("coverage") or 0) + (0.5 if _PREFER.search(d) else 0.0)
+    fid = f.get("representative") or f.get("id") or ""
+    output = bool(_MODEL_OUTPUT.search(d) or _OUTPUT_ID.search(fid))
+    return ((f.get("coverage") or 0) + (0.5 if _PREFER.search(d) else 0.0) + (0.4 if output else 0.0)
+            - (0.4 if _MODEL_INPUT.search(d) and not output else 0.0)
             - (0.7 if _RAW_AMOUNT.search(d) and "per share" not in d.lower() else 0.0))
 
 

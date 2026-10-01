@@ -9,13 +9,15 @@ from .client import BrainClient, get_client
 
 
 # ------------------------------------------------------------------ (8) rules & themes
-def active_rules(sample_alpha_id: str, client: BrainClient | None = None) -> Dict[str, Any]:
+def active_rules(sample_alpha_id: str, client: BrainClient | None = None,
+                 check: Dict[str, Any] | None = None) -> Dict[str, Any]:
     """What the platform currently enforces for this alpha's scope, read from its official check:
     matched / unmatched themes (name, multiplier), submission quotas, and every test's limit.
-    Use an UNSUBMITTED FULL-mode alpha from the scope you care about."""
+    Use an UNSUBMITTED FULL-mode alpha from the scope you care about. Pass `check` (a check_submission result) to
+    avoid running the slow check again."""
     from .alphas import check_submission
 
-    chk = check_submission(sample_alpha_id, client=client)
+    chk = check or check_submission(sample_alpha_id, client=client)
     out: Dict[str, Any] = {"themes_matched": [], "themes_not_matched": [], "quotas": {}, "limits": {}}
     for c in chk.get("checks") or []:
         n = c["name"]
@@ -30,6 +32,38 @@ def active_rules(sample_alpha_id: str, client: BrainClient | None = None) -> Dic
     out["power_pool_themes_active"] = [t["name"] for t in out["themes_matched"] + out["themes_not_matched"]
                                        if "Power Pool" in (t["name"] or "")]
     return out
+
+
+def pp_presubmit(alpha_id: str, idea: str | None = None, set_description: bool = True,
+                 client: BrainClient | None = None) -> Dict[str, Any]:
+    """Power Pool pre-submission in one call: draft the 3-part description from `idea` (the economic hypothesis must
+    come from the researcher) and set it, run the official check once, and report what decides a PP submission:
+    canSubmit, classification label, matched / unmatched themes, PP correlation, failing / pending / erroring tests,
+    robust-universe results and pyramids. Without `idea` the alpha's current description is kept."""
+    from .alphas import check_submission, update_alpha
+    from .pp import classify_alpha
+
+    c = client or get_client()
+    desc = None
+    if idea:
+        desc = draft_pp_description(alpha_id, idea, client=c)
+        if set_description and desc["check"].get("ok"):
+            update_alpha(alpha_id, description=desc["text"], client=c)
+    chk = check_submission(alpha_id, timeout=1800, client=c)
+    rules = active_rules(alpha_id, client=c, check=chk)
+    by = {x["name"]: x for x in chk.get("checks") or []}
+    return {"alpha_id": alpha_id, "canSubmit": chk.get("canSubmit"),
+            "label": classify_alpha(alpha_id, client=c, check=chk).get("label"),
+            "themes_matched": [t["name"] for t in rules["themes_matched"]],
+            "themes_not_matched": [t["name"] for t in rules["themes_not_matched"]],
+            "pp_correlation": (by.get("POWER_POOL_CORRELATION") or {}).get("value"),
+            "fail": [(x["name"], x.get("value"), x.get("limit")) for x in chk.get("checks") or []
+                     if x.get("result") in ("FAIL", "ERROR")],
+            "pending": [x["name"] for x in chk.get("pending") or []],
+            "robust_universe": [(x["name"], x.get("value"), x.get("limit"), x.get("result"))
+                                for x in chk.get("checks") or [] if "ROBUST" in x["name"]],
+            "pyramids": [p.get("name") for p in (by.get("MATCHES_PYRAMID") or {}).get("pyramids") or []],
+            "quotas": rules["quotas"], "description_check": desc and desc["check"]}
 
 
 # ------------------------------------------------------------------ (7) descriptions

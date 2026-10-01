@@ -375,6 +375,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("ids", nargs="+")
     p.add_argument("--regular", action="store_true", help="plan regular submissions instead of pure Power Pool")
     p.add_argument("--quota", type=int, help="submissions left today")
+    p = cmd("pp-presubmit", "Power Pool pre-submission: set description from an idea, check, theme match, PP corr")
+    p.add_argument("id")
+    p.add_argument("--idea", help="economic hypothesis (drafts and sets the 3-part description); omit to keep the current one")
     p = cmd("rules", "active themes, quotas and test limits as seen by an unsubmitted alpha's check")
     p.add_argument("id")
     p = cmd("desc-check", "check a Power Pool description (length, sections, no expression, uniqueness)")
@@ -623,6 +626,8 @@ def run(a: argparse.Namespace) -> Any:
         return W.compare_robustness(a.ids)
     if cmd == "readiness":
         return W.submission_readiness(a.ids, purpose="regular" if a.regular else "power_pool", quota_left=a.quota)
+    if cmd == "pp-presubmit":
+        return W.pp_presubmit(a.id, a.idea)
     if cmd == "rules":
         return W.active_rules(a.id)
     if cmd == "desc-check":

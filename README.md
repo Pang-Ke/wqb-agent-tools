@@ -362,6 +362,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.recent_strength(ids_or_signals, years=None)` | 按最近几年的逐年 Sharpe 排序（已按翻转方向修正），用于解决 IS ladder 失败 | Rank by Sharpe in the latest in-sample years (sign-adjusted); for IS-ladder failures |
 | `W.submission_readiness(ids, purpose=, quota_left=None)` | 提交就绪评估与推荐顺序 | Submission readiness and recommended order |
 | `W.draft_pp_description(id, idea)` / `W.check_description(text, expression, others=[])` | 起草 / 检查 Power Pool 描述 | Draft / check a Power Pool description |
+| `W.pp_presubmit(id, idea=None)` | Power Pool 提交前一次调用完成：写入描述、官方检查、是否匹配主题、PP 相关性、稳健股票池、金字塔、当日配额 | Power Pool pre-submission in one call: description, official check, theme match, PP correlation, robust universe, pyramids, quotas |
 | `W.active_rules(unsubmitted_alpha_id)` | 当前主题、额度与测试门槛 | Active themes, quotas and test limits |
 
 ### 7.12 工具函数 / Utilities (`utils.py`)
@@ -390,7 +391,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |
 | Power Pool 与相关性 / Power Pool & correlation | `pp-budget` `pp-classify` `corr-matrix` `self-corr-local` `submit-order` |
-| 研究工作流 / Research workflow | `scout` `rep-fields` `concepts` `experiment` `tried` `quota` `robustness` `readiness` `rules` `desc-draft` `desc-check` |
+| 研究工作流 / Research workflow | `scout` `rep-fields` `concepts` `experiment` `tried` `quota` `robustness` `readiness` `pp-presubmit` `rules` `desc-draft` `desc-check` |
 | 通用 / Generic | `raw` |
 
 `batch` 和 `experiment` 的输入文件支持 `.txt`（每行一个表达式）、`.json`（列表）和 `.jsonl`（每行一个 JSON）。
