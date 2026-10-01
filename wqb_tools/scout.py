@@ -22,7 +22,7 @@ _CALENDAR = re.compile(r"\b(week number|month code|quarter code|market regime|re
 _JUNK_TOKENS = {"date", "time", "timestamp", "period", "type", "id", "ticker", "isin", "cusip", "sedol", "ric", "code",
                 "shares", "call", "received", "receivetime", "wqreceivetime", "week", "month", "regime", "epoch", "year",
                 "version", "title", "timeofarrival", "arrival"}
-_JUNK_SUBSTR = ("periodend", "yearend", "periodtype", "sharesoutstanding", "receivetime", "fiscalyear", "companyname",
+_JUNK_SUBSTR = ("periodend", "yearend", "periodtype", "sharesoutstanding", "receivetime", "fiscalyear", "fiscalquarter", "fiscalperiod", "companyname",
                 "company_name", "unit_name", "mktcap", "market_cap", "tickermap", "currency_of")
 # identifier / classification columns that vendors repeat inside signal datasets (<prefix>_sector, <prefix>_sub_industry)
 _JUNK_SUFFIX = re.compile(r"_(name|sector|industry|sub_industry|subindustry|country|currency|exchange)$", re.I)

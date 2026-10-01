@@ -3,7 +3,7 @@ osmosis, messages, teams, competitions, leaderboards, events."""
 from __future__ import annotations
 
 from datetime import date, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Iterable, List, Optional
 
 from .client import BrainClient, get_client
 from .utils import html_to_text, recordset_to_dicts
@@ -252,6 +252,98 @@ def account_status(client: BrainClient | None = None) -> Dict[str, Any]:
             "value_factor": {k: v for k, v in value_factor(client=c).items() if k != "raw"},
             "submission_days": {k: days[k] for k in ("window_start", "count", "min_days", "shortfall", "at_risk")},
             "submitted_today": days["submitted_today"], "today": days["today"]}
+
+
+# Genius eligibility thresholds as published for 2025 (community-reported; WorldQuant announces them per quarter -
+# check the Genius status page and pass `thresholds` when they change). Combined = best of the combined performances.
+GENIUS_THRESHOLDS: Dict[str, Dict[str, float]] = {
+    "EXPERT": {"signals": 20, "pyramids": 10, "combined": 0.5},
+    "MASTER": {"signals": 120, "pyramids": 20, "combined": 1.0},
+    "GRANDMASTER": {"signals": 220, "pyramids": 50, "combined": 2.0},
+}
+
+
+def _candidate_pyramids(alpha_id: str, client: BrainClient) -> Dict[str, Any]:
+    """Pyramids an UNSUBMITTED alpha would count for (from its official check; slow)."""
+    from .alphas import check_submission
+
+    chk = check_submission(alpha_id, timeout=1800, client=client)
+    p = next((x for x in chk.get("checks") or [] if x.get("name") == "MATCHES_PYRAMID"), {}) or {}
+    return {"effective": p.get("effective") or 0, "pyramids": [q.get("name") for q in p.get("pyramids") or []]}
+
+
+def genius_progress(level: str = "EXPERT", candidates: Iterable[Any] = (), thresholds: Dict[str, Dict[str, float]] | None = None,
+                    quarter: str = "current", client: BrainClient | None = None) -> Dict[str, Any]:
+    """Where you stand this quarter against a Genius level's eligibility thresholds, pyramid by pyramid.
+    Pyramid rules: a pyramid (region / delay / data category) is complete with >= 3 alphas submitted in the quarter; an
+    alpha that touches more than 2 pyramids counts for none (pyramidThemes.effective = 0) but still counts as a signal.
+    candidates: unsubmitted alphas to add hypothetically - ids (pyramids then come from the official check, slow) or
+    dicts {"id", "pyramids", "effective"?} when already known (e.g. from pp_presubmit()["pyramids"]).
+    quarter: 'current' or 'previous' (the previous quarter's official pyramidCount is a sanity check for the counting).
+    Returns signals / pyramids / combined performance vs the thresholds, per-pyramid counts, pyramids one or two alphas
+    short, submitted alphas that count for no pyramid, and the tie-breaker statistics."""
+    from datetime import date as _date
+
+    from .alphas import list_alphas
+
+    c = client or get_client()
+    perf = consultant_summary(client=c).get("performance") or {}
+    cur = perf.get(quarter) or {}
+    q = cur.get("quarter") or {}
+    start, end = q.get("startDate"), q.get("endDate")
+    if not start:
+        t = _us_eastern_today()
+        qs = (t.month - 1) // 3 * 3 + 1
+        start, end = _date(t.year, qs, 1).isoformat(), None
+    rows = list_alphas([f"dateSubmitted>={start}T00:00:00-05:00"], stage="OS", order="-dateSubmitted", limit=None,
+                       summary=False, client=c)["alphas"]
+    rows = [a for a in rows if start <= (a.get("dateSubmitted") or "")[:10] <= (end or "9999")]
+    counts: Dict[str, int] = {}
+    members: Dict[str, List[str]] = {}
+    zero = []
+    for a in rows:
+        pt = a.get("pyramidThemes") or {}
+        names = [p.get("name") for p in pt.get("pyramids") or []]
+        if not pt.get("effective"):
+            zero.append({"id": a.get("id"), "pyramids": names})
+            continue
+        for n in names:
+            counts[n] = counts.get(n, 0) + 1
+            members.setdefault(n, []).append(a.get("id"))
+    cand_rows = []
+    for cand in candidates:
+        if isinstance(cand, dict):   # already known, e.g. pp_presubmit()["pyramids"]
+            aid = cand["id"]
+            cp = {"pyramids": list(cand.get("pyramids") or []),
+                  "effective": cand.get("effective", 1 if 0 < len(cand.get("pyramids") or []) <= 2 else 0)}
+        else:
+            aid, cp = cand, _candidate_pyramids(cand, c)
+        cand_rows.append({"id": aid, **cp})
+        if cp["effective"]:
+            for n in cp["pyramids"]:
+                counts[n] = counts.get(n, 0) + 1
+                members.setdefault(n, []).append(f"{aid}*")
+    th = (thresholds or GENIUS_THRESHOLDS).get(level.upper(), {})
+    combined = [cur.get(k) for k in ("combinedAlphaPerformance", "combinedSelectedAlphaPerformance",
+                                     "combinedPowerPoolAlphaPerformance", "combinedOsmosisPerformance")]
+    best = max((v for v in combined if isinstance(v, (int, float))), default=None)
+    n_signals = len(rows) + len(cand_rows)
+    complete = sorted(n for n, k in counts.items() if k >= 3)
+    return {
+        "level": level.upper(), "quarter": q.get("name"), "thresholds": th,
+        "signals": {"have": n_signals, "need": th.get("signals"), "gap": max(0, (th.get("signals") or 0) - n_signals)},
+        "pyramids": {"complete": len(complete), "official": cur.get("pyramidCount"), "need": th.get("pyramids"),
+                     "gap": max(0, int(th.get("pyramids") or 0) - len(complete))},
+        "combined_performance": {"best": best, "need": th.get("combined"), "values": dict(zip(
+            ("all", "selected", "power_pool", "osmosis"), combined))},
+        "pyramid_counts": dict(sorted(counts.items(), key=lambda kv: (-kv[1], kv[0]))),
+        "pyramid_members": members, "complete_pyramids": complete,
+        "almost": {n: 3 - k for n, k in counts.items() if 0 < k < 3},
+        "zero_pyramid_alphas": zero, "candidates": cand_rows,
+        "tie_breakers": {k: cur.get(k) for k in ("operatorAvg", "operatorCount", "fieldAvg", "fieldCount",
+                                                 "communityActivity", "maxSimulationStreak")},
+        "note": "thresholds default to the 2025 published values; candidates marked * are hypothetical",
+    }
 
 
 def competition_levels(client: BrainClient | None = None) -> List[Dict[str, Any]]:

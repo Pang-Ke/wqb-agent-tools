@@ -285,6 +285,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.value_factor()` | Value Factor、Weight Factor 及平均生产/自相关等 | Value factor, weight factor, mean prod/self correlation |
 | `W.recent_submissions(days=7, since=None)` | 最近提交的 alpha（按平台的美东日期） | Recently submitted alphas (platform days, US Eastern) |
 | `W.submission_days(window_days=91, min_days=20)` | 滚动窗口内的提交天数；少于 20 天 Value Factor 会被重置到最低 | Submission days in the rolling window; fewer than 20 resets the value factor |
+| `W.genius_progress(level="EXPERT", candidates=(), quarter="current")` | 金字塔追踪：本季度信号数、已完成金字塔（同一 地区/延迟/类别 ≥3 个）、差几个、不计入金字塔的 alpha、与等级门槛的差距；可加入未提交候选做假设 | Pyramid tracker: quarter signals, complete pyramids (≥ 3 alphas per region/delay/category), what's missing, alphas that count for no pyramid, gaps to a Genius level; can add unsubmitted candidates hypothetically |
 | `W.account_status()` | 一次调用汇总：Genius 等级、本季度统计、VF、提交天数、今日提交数 | One-call summary: genius level, quarter stats, VF, submission days, today's submissions |
 | `W.events(limit=50, upcoming_only=False)` | 活动与讲座 | Events and webinars |
 
@@ -386,7 +387,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | 模拟 / Simulation | `simulate` `payload` `batch` `sim-status` `sim-wait` `sim-cancel` `promote` |
 | Alpha | `alpha` `alphas` `alpha-counts` `recordsets` `recordset` `pnl` `yearly` `check` `corr` `before-after` `update-alpha` `submit` `components` |
 | 标签 / Tags | `tags` `tag` `tag-create` `tag-update` `tag-delete` `tag-corr` |
-| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `osmosis` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
+| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `genius-progress` `osmosis` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
 | 文档 / Docs | `docs` `doc` `docs-dump` `examples` `videos` |
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |

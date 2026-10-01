@@ -39,7 +39,10 @@ def pp_presubmit(alpha_id: str, idea: str | None = None, set_description: bool =
     """Power Pool pre-submission in one call: draft the 3-part description from `idea` (the economic hypothesis must
     come from the researcher) and set it, run the official check once, and report what decides a PP submission:
     canSubmit, classification label, matched / unmatched themes, PP correlation, failing / pending / erroring tests,
-    robust-universe results and pyramids. Without `idea` the alpha's current description is kept."""
+    robust-universe results and pyramids. Without `idea` the alpha's current description is kept.
+    Note: the pre-submission MATCHES_THEMES entry can under-report (EUR / ASI pv alphas showed the 'All regions'
+    Power Pool theme as not matched yet carried it once submitted); the submitted alpha's 'themes' field (get_alpha)
+    is authoritative, so judge theme eligibility from the theme's written rules as well."""
     from .alphas import check_submission, update_alpha
     from .pp import classify_alpha
 

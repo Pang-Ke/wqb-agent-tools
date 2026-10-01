@@ -274,6 +274,10 @@ def build_parser() -> argparse.ArgumentParser:
     p = cmd("submitted", "alphas you submitted recently (platform days, US Eastern)")
     p.add_argument("--days", type=int, default=7, help="1 = today only")
     p.add_argument("--since", help="YYYY-MM-DD (overrides --days)")
+    p = cmd("genius-progress", "this quarter vs a Genius level: signals, complete pyramids (>= 3 alphas), gaps")
+    p.add_argument("--level", default="EXPERT", choices=["EXPERT", "MASTER", "GRANDMASTER"])
+    p.add_argument("--quarter", default="current", choices=["current", "previous"])
+    p.add_argument("--candidates", nargs="*", default=[], help="unsubmitted alpha ids to add hypothetically (slow)")
     cmd("osmosis", "osmosis summary")
     p = cmd("messages", "announcements / notifications")
     p.add_argument("--type", choices=["ANNOUNCEMENT", "NOTIFICATION"])
@@ -561,6 +565,8 @@ def run(a: argparse.Namespace) -> Any:
         return W.submission_days(a.window)
     if cmd == "submitted":
         return W.recent_submissions(a.days, a.since)
+    if cmd == "genius-progress":
+        return W.genius_progress(a.level, a.candidates, quarter=a.quarter)
     if cmd == "activity":
         return W.activity(a.name, a.date_from)
     if cmd == "diversity":

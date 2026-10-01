@@ -138,6 +138,8 @@ def main():
     step("value_factor", W.value_factor, lambda r: "value_factor" in r and "weight_factor" in r)
     step("recent_submissions", lambda: W.recent_submissions(days=30), lambda r: isinstance(r, list))
     step("submission_days", W.submission_days, lambda r: {"count", "shortfall", "at_risk"} <= set(r))
+    step("genius_progress", lambda: W.genius_progress(candidates=[{"id": "X", "pyramids": ["USA/D1/PV"]}]),
+         lambda r: r["signals"]["have"] >= 1 and r["candidates"][0]["effective"] == 1 and "pyramid_counts" in r)
     step("account_status", W.account_status, lambda r: {"genius_level", "value_factor", "submission_days"} <= set(r))
     step("events", lambda: W.events(limit=3), lambda r: isinstance(r, list))
     step("user_profile", lambda: W.user_profile(info["user"]["id"]), lambda r: "id" in r)
