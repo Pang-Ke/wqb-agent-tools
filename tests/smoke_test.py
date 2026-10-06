@@ -123,6 +123,8 @@ def main():
     step("achievements", W.achievements, lambda r: isinstance(r, list))
     step("consultant_summary", W.consultant_summary, lambda r: isinstance(r, dict))
     step("osmosis_summary", W.osmosis_summary, lambda r: isinstance(r, dict))
+    step("osmosis_allocations", W.osmosis_allocations,
+         lambda r: isinstance(r, dict) and all({"total", "alphas", "complete"} <= set(g) for g in r.values()))
     step("messages", lambda: W.messages(limit=3), lambda r: len(r) > 0)
     step("messages_summary", W.messages_summary, lambda r: isinstance(r, dict))
     step("teams", W.teams, lambda r: isinstance(r, list))

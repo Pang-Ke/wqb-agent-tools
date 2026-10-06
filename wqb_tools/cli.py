@@ -279,6 +279,9 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--quarter", default="current", choices=["current", "previous"])
     p.add_argument("--candidates", nargs="*", default=[], help="unsubmitted alpha ids to add hypothetically (slow)")
     cmd("osmosis", "osmosis summary")
+    cmd("osmosis-alloc", "your current Osmosis points by region (complete = 100,000 over >= 10 alphas)")
+    p = cmd("osmosis-set", "set Osmosis points on submitted alphas: ID=POINTS ... (0 removes)")
+    p.add_argument("pairs", nargs="+", help="e.g. AbCdEf12=15000 XyZ98765=0")
     p = cmd("messages", "announcements / notifications")
     p.add_argument("--type", choices=["ANNOUNCEMENT", "NOTIFICATION"])
     p.add_argument("--limit", type=int, default=20)
@@ -554,6 +557,7 @@ def run(a: argparse.Namespace) -> Any:
     # account
     simple = {"me": W.me, "pyramids": W.pyramid_overview, "streak": W.streak, "achievements": W.achievements,
               "consultant": W.consultant_summary, "osmosis": W.osmosis_summary, "teams": W.teams,
+              "osmosis-alloc": W.osmosis_allocations,
               "status": W.account_status,
               "alpha-counts": W.alphas_count_summary, "categories": W.data_categories, "videos": W.video_courses,
               "forum-topics": lambda: f().topics(), "help-categories": lambda: f().categories()}
@@ -565,6 +569,8 @@ def run(a: argparse.Namespace) -> Any:
         return W.submission_days(a.window)
     if cmd == "submitted":
         return W.recent_submissions(a.days, a.since)
+    if cmd == "osmosis-set":
+        return W.set_osmosis_points({k: int(v) for k, v in (x.split("=", 1) for x in a.pairs)})
     if cmd == "genius-progress":
         return W.genius_progress(a.level, a.candidates, quarter=a.quarter)
     if cmd == "activity":

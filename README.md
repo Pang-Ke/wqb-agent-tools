@@ -278,6 +278,8 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.pyramid_alphas()` / `W.pyramid_multipliers()` / `W.pyramid_overview()` | 金字塔 alpha 数 / 乘数 / 合并视图 | Pyramid counts / multipliers / combined view |
 | `W.streak()` `W.achievements()` `W.agreements()` `W.teams()` | 连续天数、成就、协议、团队 | Streak, achievements, agreements, teams |
 | `W.consultant_summary()` / `W.osmosis_summary()` | 顾问汇总 / osmosis 汇总 | Consultant summary / osmosis summary |
+| `W.osmosis_allocations()` | 当前的 Osmosis 点数，按地区分组，并标出是否满足「正好 100,000 点、至少 10 个因子」 | Current Osmosis points by region, with a flag for "exactly 100,000 over ≥ 10 alphas" |
+| `W.set_osmosis_points({alpha_id: points})` | 给已提交的因子设置 Osmosis 点数（0 = 移出），之后重新读取并返回分配结果；可随时再改 | Set Osmosis points on submitted alphas (0 removes); re-reads and returns the allocation; can be changed any time |
 | `W.messages(msg_type=None, limit=20)` / `W.messages_summary()` | 公告和通知 / 未读数 | Announcements & notifications / unread counts |
 | `W.competitions(mine=False)` / `W.competition(id)` / `W.competition_board(id, board="leader")` | 比赛列表 / 详情 / 排行榜 | Competitions / details / leaderboard |
 | `W.consultant_board(board="genius")` / `W.competition_levels()` | 顾问排行榜 / 比赛等级 | Consultant boards / competition levels |
@@ -387,7 +389,7 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | 模拟 / Simulation | `simulate` `payload` `batch` `sim-status` `sim-wait` `sim-cancel` `promote` |
 | Alpha | `alpha` `alphas` `alpha-counts` `recordsets` `recordset` `pnl` `yearly` `check` `corr` `before-after` `update-alpha` `submit` `components` |
 | 标签 / Tags | `tags` `tag` `tag-create` `tag-update` `tag-delete` `tag-corr` |
-| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `genius-progress` `osmosis` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
+| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `genius-progress` `osmosis` `osmosis-alloc` `osmosis-set` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
 | 文档 / Docs | `docs` `doc` `docs-dump` `examples` `videos` |
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |

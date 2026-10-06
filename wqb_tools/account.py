@@ -93,6 +93,50 @@ def osmosis_summary(user_id: str | None = None, client: BrainClient | None = Non
     return c.get(f"/users/{user_id or c.user_id}/osmosis/summary")
 
 
+OSMOSIS_TOTAL = 100_000      # points to spread per region
+OSMOSIS_MIN_ALPHAS = 10      # ... over at least this many alphas (help-center rule)
+
+
+def osmosis_allocations(client: BrainClient | None = None) -> Dict[str, Any]:
+    """Your current Osmosis points, grouped by region: {region: {'total', 'alphas': [{id, points, sharpe, fitness,
+    turnover, dateSubmitted}], 'complete'}}. 'complete' = exactly 100,000 points over >= 10 alphas."""
+    from .alphas import list_alphas
+
+    rows = list_alphas([], stage="OS", order="-dateSubmitted", limit=None, summary=False,
+                       client=client or get_client())["alphas"]
+    out: Dict[str, Any] = {}
+    for a in rows:
+        pts = a.get("osmosisPoints") or 0
+        if pts <= 0:
+            continue
+        st, i = a.get("settings") or {}, a.get("is") or {}
+        g = out.setdefault(st.get("region"), {"total": 0, "alphas": []})
+        g["total"] += pts
+        g["alphas"].append({"id": a.get("id"), "points": pts, "sharpe": i.get("sharpe"), "fitness": i.get("fitness"),
+                            "turnover": i.get("turnover"), "dateSubmitted": a.get("dateSubmitted")})
+    for g in out.values():
+        g["alphas"].sort(key=lambda x: -x["points"])
+        g["complete"] = g["total"] == OSMOSIS_TOTAL and len(g["alphas"]) >= OSMOSIS_MIN_ALPHAS
+    return out
+
+
+def set_osmosis_points(points: Dict[str, int], client: BrainClient | None = None) -> Dict[str, Any]:
+    """Set Osmosis points on submitted alphas: {alpha_id: points} (0 removes an alpha from the pool), one
+    PATCH /alphas/{id} {'osmosisPoints': n} each. Only submitted, compensated D1 non-Super alphas are accepted by the
+    platform. Points can be changed again at any time. Returns {'results': [{id, points, ok, error}], 'allocations'}
+    with the allocation re-read afterwards - check each region's 'complete' flag (exactly 100,000 over >= 10 alphas)."""
+    c = client or get_client()
+    results = []
+    for aid, pts in points.items():
+        n = int(pts)
+        if n < 0:
+            raise ValueError(f"{aid}: points must be >= 0")
+        r = c.request("PATCH", f"/alphas/{aid}", json_body={"osmosisPoints": n}, raise_on_error=False)
+        ok = r.status_code < 300
+        results.append({"id": aid, "points": n, "ok": ok, "error": None if ok else r.text[:300]})
+    return {"results": results, "allocations": osmosis_allocations(c)}
+
+
 def agreements(client: BrainClient | None = None) -> List[Dict[str, Any]]:
     return (client or get_client()).get("/users/self/agreements")
 
