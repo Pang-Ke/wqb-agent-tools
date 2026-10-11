@@ -82,6 +82,7 @@ wqb-agent-tools/
 │   ├── meta.py        模拟选项、地区、算子、权限 / simulation options, regions, operators, permissions
 │   ├── data.py        数据类别、数据集、字段 / data categories, datasets, fields
 │   ├── simulate.py    模拟（单个、批量、Multi-Simulation）/ simulations (single, batch, multi)
+│   ├── pyalpha.py     Python alpha：模板、静态检查、模拟 / Python alphas: template, static check, simulation
 │   ├── alphas.py      alpha 查询、检查、相关性、提交、标签 / alphas, checks, correlation, submit, tags
 │   ├── account.py     账户、活动、比赛、排行榜 / account, activity, competitions, leaderboards
 │   ├── docs.py        官方文档 / official documentation
@@ -249,6 +250,20 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.promote_to_full(alpha_id, **overrides)` | 用 FULL 模式重新模拟 | Re-simulate in FULL mode |
 | `W.cache_lookup(payload)` | 查询本地去重缓存 | Look up the local de-duplication cache |
 
+**Python alpha（`pyalpha.py`，模拟语言 PYTHON / simulation language PYTHON）**
+
+Python alpha 是一个自包含的模块，里面有且只有一个用 `@alpha(data=[...], store=[...])` 装饰的函数；平台每天调用一次，`data.<field>` 是 `[lookback+1, n_instruments]` 的只读 float32 数组（最后一行是今天），函数返回长度为 `n_instruments` 的 float32 数组。只支持 MATRIX 字段，不支持 VECTOR 字段、GLB 地区和 Multi-Simulation。 / A Python alpha is one self-contained module with exactly one `@alpha(data=[...], store=[...])` function, called once per day with read-only float32 arrays `[lookback+1, n_instruments]` (today is the last row) and returning a float32 array of length `n_instruments`. MATRIX fields only; VECTOR fields, GLB and multi-simulation are not supported.
+
+| 调用方式 / Usage | 作用 | Description |
+|---|---|---|
+| `W.python_alpha_template(fields, name="my_alpha")` | 生成可直接运行的起步模块（含两个 numpy 辅助函数） | A runnable starter module (with two numpy helpers) |
+| `W.inspect_python_alpha(code_or_path)` | 不运行代码，解析出函数名、字段、store、导入 | Parse function name, fields, store and imports without running the code |
+| `W.check_python_alpha(code_or_path, region=None, delay=1, universe=None, lookback=None)` | 按平台规则做静态检查（不消耗模拟额度）：唯一的 `@alpha` 函数、参数、导入、float32 返回、字段存在且为 MATRIX、地区不是 GLB | Static check against the platform rules (uses no simulation): single `@alpha` function, parameters, imports, float32 return, fields exist and are MATRIX, region not GLB |
+| `W.simulate_python(code_or_path, lookback=0, check=True, **settings)` | 模拟 Python alpha（字符串或 .py 文件）；检查不通过时不提交 | Simulate a Python alpha (string or .py file); nothing is sent when the check fails |
+| `W.python_payload(code_or_path, lookback=0, **settings)` | 构造请求体（自动去掉 Python 不支持的设置） | Build the payload (settings Python does not accept are removed) |
+
+`W.simulate(code, language="PYTHON", lookback=N)` 和 `simulate_batch` 也能直接用：前者自动去掉不支持的设置，后者对 Python alpha 逐个模拟。每天的计算量大时模拟会非常慢（实测：USA TOP3000 上每天做一次 SVD 要一个多小时；社区报告约 600 秒会失败），所以要向量化、lookback 取够用的最小值、把中间结果缓存在 `store` 里。 / `W.simulate(code, language="PYTHON", lookback=N)` and `simulate_batch` work too: the former drops unsupported settings, the latter runs Python alphas one by one. Heavy per-day computation makes simulations very slow (a daily SVD on USA TOP3000 took over an hour; the community reports failures around 600 s), so vectorise, keep lookback minimal and cache intermediates in `store`.
+
 ### 7.5 Alpha (`alphas.py`)
 
 | 调用方式 / Usage | 作用 | Description |
@@ -279,12 +294,13 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 | `W.streak()` `W.achievements()` `W.agreements()` `W.teams()` | 连续天数、成就、协议、团队 | Streak, achievements, agreements, teams |
 | `W.consultant_summary()` / `W.osmosis_summary()` | 顾问汇总 / osmosis 汇总 | Consultant summary / osmosis summary |
 | `W.osmosis_allocations()` | 当前的 Osmosis 点数，按地区分组，并标出是否满足「正好 100,000 点、至少 10 个因子」 | Current Osmosis points by region, with a flag for "exactly 100,000 over ≥ 10 alphas" |
-| `W.set_osmosis_points({alpha_id: points})` | 给已提交的因子设置 Osmosis 点数（0 = 移出），之后重新读取并返回分配结果；可随时再改 | Set Osmosis points on submitted alphas (0 removes); re-reads and returns the allocation; can be changed any time |
+| `W.set_osmosis_points({alpha_id: points})` | 给已提交的因子设置 Osmosis 点数（0 或 None = 移出），之后重新读取并返回分配结果；可随时再改 | Set Osmosis points on submitted alphas (0 / None removes); re-reads and returns the allocation; can be changed any time |
 | `W.messages(msg_type=None, limit=20)` / `W.messages_summary()` | 公告和通知 / 未读数 | Announcements & notifications / unread counts |
 | `W.competitions(mine=False)` / `W.competition(id)` / `W.competition_board(id, board="leader")` | 比赛列表 / 详情 / 排行榜 | Competitions / details / leaderboard |
 | `W.consultant_board(board="genius")` / `W.competition_levels()` | 顾问排行榜 / 比赛等级 | Consultant boards / competition levels |
 | `W.leaderboard_row(user_id=None, board="leader")` | 自己（或指定用户）在顾问榜单上的那一行，一次请求 | Your (or a user's) row on a consultant board, in one request |
 | `W.value_factor()` | Value Factor、Weight Factor 及平均生产/自相关等 | Value factor, weight factor, mean prod/self correlation |
+| `W.base_payments()` | 每日基础报酬（昨日 / 本期 / 年初至今 / 累计 + 每日明细） | Daily base payment (yesterday / period / year-to-date / total + daily rows) |
 | `W.recent_submissions(days=7, since=None)` | 最近提交的 alpha（按平台的美东日期） | Recently submitted alphas (platform days, US Eastern) |
 | `W.submission_days(window_days=91, min_days=20)` | 滚动窗口内的提交天数；少于 20 天 Value Factor 会被重置到最低 | Submission days in the rolling window; fewer than 20 resets the value factor |
 | `W.genius_progress(level="EXPERT", candidates=(), quarter="current")` | 金字塔追踪：本季度信号数、已完成金字塔（同一 地区/延迟/类别 ≥3 个）、差几个、不计入金字塔的 alpha、与等级门槛的差距；可加入未提交候选做假设 | Pyramid tracker: quarter signals, complete pyramids (≥ 3 alphas per region/delay/category), what's missing, alphas that count for no pyramid, gaps to a Genius level; can add unsubmitted candidates hypothetically |
@@ -386,10 +402,10 @@ All commands print JSON; `--csv` prints CSV, `--out file.json|file.csv` saves to
 |---|---|
 | 认证与元数据 / Auth & metadata | `login` `whoami` `logout` `permissions` `options` `regions` `defaults` `operators` `op-doc` |
 | 数据 / Data | `categories` `datasets` `dataset` `dataset-search` `fields` `field` `field-ids` `visualize` |
-| 模拟 / Simulation | `simulate` `payload` `batch` `sim-status` `sim-wait` `sim-cancel` `promote` |
+| 模拟 / Simulation | `simulate` `payload` `batch` `sim-status` `sim-wait` `sim-cancel` `promote` `py-template` `py-check` `py-sim` |
 | Alpha | `alpha` `alphas` `alpha-counts` `recordsets` `recordset` `pnl` `yearly` `check` `corr` `before-after` `update-alpha` `submit` `components` |
 | 标签 / Tags | `tags` `tag` `tag-create` `tag-update` `tag-delete` `tag-corr` |
-| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `sub-days` `submitted` `genius-progress` `osmosis` `osmosis-alloc` `osmosis-set` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
+| 账户与社区 / Account & community | `me` `activity` `diversity` `pyramids` `streak` `achievements` `consultant` `status` `vf` `base-pay` `sub-days` `submitted` `genius-progress` `osmosis` `osmosis-alloc` `osmosis-set` `messages` `teams` `competitions` `competition` `board` `genius` `events` |
 | 文档 / Docs | `docs` `doc` `docs-dump` `examples` `videos` |
 | 论坛与文章 / Forum & articles | `forum-topics` `forum-posts` `forum-post` `forum-search` `forum-crawl` `article-search` `article` `articles` `help-categories` `help-sections` |
 | 表达式 / Expressions | `validate` `lint` `expand` |

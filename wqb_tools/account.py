@@ -45,6 +45,18 @@ def simulation_counts(days: int = 7, client: BrainClient | None = None) -> Dict[
     return activity("simulations", (date.today() - timedelta(days=days)).isoformat(), client)
 
 
+def base_payments(client: BrainClient | None = None) -> Dict[str, Any]:
+    """GET /users/self/activities/base-payment - daily base payment.
+    {'yesterday', 'current', 'previous', 'ytd', 'total' (each {start, end, value, regularAlpha, superAlpha}),
+     'daily': [{'date', 'regular', 'super'}], 'currency'}. Dates are US Eastern."""
+    d = (client or get_client()).request("GET", "/users/self/activities/base-payment",
+                                         headers={"accept": "application/json;version=3.0"}).json()
+    rows = ((d.get("records") or {}).get("records")) or []
+    out = {k: d.get(k) for k in ("yesterday", "current", "previous", "ytd", "total", "currency")}
+    out["daily"] = [{"date": r[0], "regular": r[1], "super": r[2] if len(r) > 2 else None} for r in rows]
+    return out
+
+
 def diversity(grouping: str = "region,delay,dataCategory", user: str = "self", client: BrainClient | None = None) -> Dict[str, Any]:
     """GET /users/{id}/activities/diversity - submitted-alpha breakdown by region/delay/data category."""
     return (client or get_client()).get(f"/users/{user}/activities/diversity", params={"grouping": grouping})
@@ -121,17 +133,17 @@ def osmosis_allocations(client: BrainClient | None = None) -> Dict[str, Any]:
 
 
 def set_osmosis_points(points: Dict[str, int], client: BrainClient | None = None) -> Dict[str, Any]:
-    """Set Osmosis points on submitted alphas: {alpha_id: points} (0 removes an alpha from the pool), one
-    PATCH /alphas/{id} {'osmosisPoints': n} each. Only submitted, compensated D1 non-Super alphas are accepted by the
+    """Set Osmosis points on submitted alphas: {alpha_id: points}; 0 or None removes an alpha from the pool (sent as
+    null - the platform rejects 0). One PATCH /alphas/{id} {'osmosisPoints': n} each. Only submitted, compensated D1 non-Super alphas are accepted by the
     platform. Points can be changed again at any time. Returns {'results': [{id, points, ok, error}], 'allocations'}
     with the allocation re-read afterwards - check each region's 'complete' flag (exactly 100,000 over >= 10 alphas)."""
     c = client or get_client()
     results = []
     for aid, pts in points.items():
-        n = int(pts)
+        n = int(pts or 0)
         if n < 0:
             raise ValueError(f"{aid}: points must be >= 0")
-        r = c.request("PATCH", f"/alphas/{aid}", json_body={"osmosisPoints": n}, raise_on_error=False)
+        r = c.request("PATCH", f"/alphas/{aid}", json_body={"osmosisPoints": n or None}, raise_on_error=False)
         ok = r.status_code < 300
         results.append({"id": aid, "points": n, "ok": ok, "error": None if ok else r.text[:300]})
     return {"results": results, "allocations": osmosis_allocations(c)}

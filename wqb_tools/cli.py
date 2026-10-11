@@ -269,6 +269,26 @@ def build_parser() -> argparse.ArgumentParser:
     cmd("status", "one-call summary: genius level, quarter stats, value factor, submission days, today's submissions")
     p = cmd("vf", "value factor + weight factor from the consultant leaderboard")
     p.add_argument("--user", help="another user id (default: you)")
+    cmd("base-pay", "daily base payment (yesterday / period / year-to-date / total + daily rows)")
+    p = cmd("py-template", "print a starter Python alpha module for the given data fields")
+    p.add_argument("fields", nargs="+")
+    p.add_argument("--name", default="my_alpha")
+    p = cmd("py-check", "static check of a Python alpha file against the platform rules (no simulation)")
+    p.add_argument("file")
+    p.add_argument("--region")
+    p.add_argument("--universe")
+    p.add_argument("--delay", type=int, default=1)
+    p.add_argument("--lookback", type=int)
+    p = cmd("py-sim", "simulate a Python alpha file (language PYTHON)")
+    p.add_argument("file")
+    p.add_argument("--lookback", type=int, default=0, help="extra history rows (window = lookback + 1)")
+    p.add_argument("--region", default="USA")
+    p.add_argument("--universe", default="TOP3000")
+    p.add_argument("--delay", type=int, default=1)
+    p.add_argument("--decay", type=int, default=0)
+    p.add_argument("--neutralization", default="SUBINDUSTRY")
+    p.add_argument("--truncation", type=float, default=0.08)
+    p.add_argument("--timeout", type=float, default=7200)
     p = cmd("sub-days", "distinct submission days in the rolling window vs the 20-day value-factor rule")
     p.add_argument("--window", type=int, default=91)
     p = cmd("submitted", "alphas you submitted recently (platform days, US Eastern)")
@@ -565,6 +585,16 @@ def run(a: argparse.Namespace) -> Any:
         return simple[cmd]()
     if cmd == "vf":
         return {k: v for k, v in W.value_factor(a.user).items() if k != "raw"}
+    if cmd == "base-pay":
+        return W.base_payments()
+    if cmd == "py-template":
+        return W.python_alpha_template(a.fields, a.name)
+    if cmd == "py-check":
+        return W.check_python_alpha(a.file, a.region, a.delay, a.universe, a.lookback)
+    if cmd == "py-sim":
+        return W.simulate_python(a.file, a.lookback, timeout=a.timeout, region=a.region, universe=a.universe,
+                                 delay=a.delay, decay=a.decay, neutralization=a.neutralization,
+                                 truncation=a.truncation)
     if cmd == "sub-days":
         return W.submission_days(a.window)
     if cmd == "submitted":

@@ -91,7 +91,8 @@ def main():
          lambda r: all((x["is"] or {}).get("sharpe", 0) >= 1.25 for x in r["alphas"]))
     sub = W.list_alphas(stage="OS", limit=1)["alphas"]
     recent = W.list_alphas(status="UNSUBMITTED", limit=30)["alphas"]
-    full = [x for x in recent if x["settings"].get("simulationMode") != "QUICK"]
+    full = [x for x in recent if x["settings"].get("simulationMode") != "QUICK"
+            and x["settings"].get("language", "FASTEXPR") != "PYTHON"]      # the checks below are for Fast Expression
     quick = [x for x in recent if x["settings"].get("simulationMode") == "QUICK"]
     aid = full[0]["id"] if full else None
     if quick:
@@ -137,6 +138,7 @@ def main():
     step("consultant_board(leader)", lambda: W.consultant_board("leader", limit=3), lambda r: "results" in r)
     step("leaderboard_row(self)", W.leaderboard_row, lambda r: r is not None and "valueFactor" in r)
     step("leaderboard_row(unknown user)", lambda: W.leaderboard_row("ZZ00000") is None, lambda r: r is True)
+    step("base_payments", W.base_payments, lambda r: isinstance(r["daily"], list) and "total" in r)
     step("value_factor", W.value_factor, lambda r: "value_factor" in r and "weight_factor" in r)
     step("recent_submissions", lambda: W.recent_submissions(days=30), lambda r: isinstance(r, list))
     step("submission_days", W.submission_days, lambda r: {"count", "shortfall", "at_risk"} <= set(r))
@@ -193,6 +195,15 @@ def main():
     step("check_expression(ok)", lambda: W.check_expression("rank(ts_mean(close, 5))"), lambda r: r["ok"])
     step("check_expression(bad)", lambda: W.check_expression("rank(ts_meen(close, 5)"), lambda r: not r["ok"])
     step("validate_expression(ok)", lambda: W.validate_expression("rank(ts_mean(close, 5))"), lambda r: r["ok"])
+    tpl = W.python_alpha_template(["returns", "close"])
+    step("python_alpha_template+check", lambda: W.check_python_alpha(tpl, region="USA", lookback=20),
+         lambda r: r["ok"] and r["fields"] == ["returns", "close"] and r["function"] == "my_alpha")
+    bad_py = tpl.replace("['returns', 'close']", "['returns', 'universe']").replace(
+        "from brain.alphas import alpha", "from brain.alphas import alpha\nfrom brain import Brain")
+    step("check_python_alpha(bad)", lambda: W.check_python_alpha(bad_py, region="GLB"),
+         lambda r: (not r["ok"]) and len(r["errors"]) == 3)
+    step("python_payload", lambda: W.python_payload(tpl, 20, decay=4)["settings"],
+         lambda s: s["language"] == "PYTHON" and s["lookback"] == 20 and "unitHandling" not in s and "nanHandling" not in s)
     step("validate_expression(bad)", lambda: W.validate_expression("ts_mean(close, volume)"),
          lambda r: not r["ok"] and "constant" in r["errors"][0])
     step("expand_template", lambda: W.expand_template("ts_mean(<f/>, <d/>)", {"f": ["close", "vwap"], "d": [5, 20]}),

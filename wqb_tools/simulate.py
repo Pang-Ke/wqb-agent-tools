@@ -131,6 +131,9 @@ def build_payload(
     s.update(normalize_settings(overrides))
     if mode:
         s["simulationMode"] = mode.upper()
+    if s.get("language") == "PYTHON":      # the platform rejects these settings for Python alphas
+        for k in ("unitHandling", "nanHandling"):
+            s.pop(k, None)
     payload: Dict[str, Any] = {"type": alpha_type, "settings": s}
     if alpha_type == "SUPER":
         if not (combo and selection):
@@ -424,6 +427,9 @@ def simulate_batch(
     if multi:
         groups: Dict[tuple, List[int]] = {}
         for i in unique:
+            if (payloads[i].get("settings") or {}).get("language") == "PYTHON":
+                jobs.append([i])           # Python alphas cannot be multi-simulated
+                continue
             groups.setdefault(_group_key(payloads[i]), []).append(i)
         for idxs in groups.values():
             size = max(2, min(10, multi_size))

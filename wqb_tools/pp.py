@@ -89,6 +89,14 @@ def pp_budget(
         st = alpha.get("settings") or {}
         region, delay, universe = region or st.get("region"), delay if delay is not None else st.get("delay"), \
             universe or st.get("universe")
+        if st.get("language") == "PYTHON":      # Python alphas have no operator count and cannot enter the Power Pool
+            from .pyalpha import inspect_python_alpha
+
+            fields = sorted(inspect_python_alpha(expression or "")["fields"])
+            return {"expression": expression, "operators": None, "operators_total": None, "free_operators": None,
+                    "operator_count_source": "n/a (python)", "fields": fields, "n_fields": len(fields), "datasets": [],
+                    "field_datasets": {}, "single_dataset": None, "unknown_fields": [], "ok": False,
+                    "issues": ["Python alphas are not eligible for the Power Pool (regular submission only)"]}
     if not expression:
         raise ValueError("expression or alpha required")
     cnt = operator_count(expression)

@@ -27,7 +27,7 @@ from .alphas import (alphas_count_summary, before_after_performance, check_submi
 from .simulate import (DEFAULT_SETTINGS, build_payload, cache_lookup, cancel_simulation, get_simulation,
                        normalize_settings, promote_to_full, set_default_settings, simulate, simulate_batch,
                        start_simulation, use_account_defaults, validate_payload, wait_simulation)
-from .account import (GENIUS_THRESHOLDS, account_status, achievements, activity, agreements, competition, competition_board,
+from .account import (GENIUS_THRESHOLDS, account_status, base_payments, achievements, activity, agreements, competition, competition_board,
                       competition_levels, competitions, consultant_board, consultant_summary, diversity, events, genius_progress,
                       leaderboard_row, me, messages, messages_summary, osmosis_allocations, osmosis_summary, pyramid_alphas,
                       pyramid_multipliers, pyramid_overview, recent_submissions, set_osmosis_points, simulation_counts, streak,
@@ -48,9 +48,11 @@ from .scout import (concept_key, field_concepts, field_families, is_market_wide,
 from .builder import build_combos, nan_safe_sum, screen_fields, signal_correlations, sweep
 from .quality import compare_robustness, recent_strength, robustness_report
 from .readiness import active_rules, check_description, draft_pp_description, pp_presubmit, submission_readiness
+from .pyalpha import (check_python_alpha, inspect_python_alpha, load_python_alpha, python_alpha_template,
+                      python_payload, simulate_python)
 from .utils import html_to_text, recordset_to_dicts, to_csv
 
-__version__ = "1.5.4"
+__version__ = "1.6.0"
 
 
 def login(email: str | None = None, password: str | None = None, force: bool = False):
