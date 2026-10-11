@@ -251,9 +251,9 @@ def recent_submissions(days: int = 7, since: str | None = None, client: BrainCli
 
     c = client or get_client()
     start = since or (_us_eastern_today() - timedelta(days=max(1, days) - 1)).isoformat()
-    # server-side filter needs an ISO datetime with offset; -05:00 is the earlier of EST/EDT midnights (inclusive),
-    # the exact day cut is done below on the Eastern-offset timestamps the platform returns
-    rows = list_alphas([f"dateSubmitted>={start}T00:00:00-05:00"], stage="OS", order="-dateSubmitted", limit=None,
+    # server-side filter needs an ISO datetime with offset; -04:00 (EDT) is the earlier of the EST/EDT midnights, so
+    # nothing submitted on `start` is cut off; the exact day cut is done below on the Eastern timestamps returned
+    rows = list_alphas([f"dateSubmitted>={start}T00:00:00-04:00"], stage="OS", order="-dateSubmitted", limit=None,
                        client=c)["alphas"]
     out = []
     for a in rows:
@@ -339,7 +339,7 @@ def genius_progress(level: str = "EXPERT", candidates: Iterable[Any] = (), thres
         t = _us_eastern_today()
         qs = (t.month - 1) // 3 * 3 + 1
         start, end = _date(t.year, qs, 1).isoformat(), None
-    rows = list_alphas([f"dateSubmitted>={start}T00:00:00-05:00"], stage="OS", order="-dateSubmitted", limit=None,
+    rows = list_alphas([f"dateSubmitted>={start}T00:00:00-04:00"], stage="OS", order="-dateSubmitted", limit=None,
                        summary=False, client=c)["alphas"]
     rows = [a for a in rows if start <= (a.get("dateSubmitted") or "")[:10] <= (end or "9999")]
     counts: Dict[str, int] = {}

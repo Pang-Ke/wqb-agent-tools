@@ -50,7 +50,7 @@ from .quality import compare_robustness, recent_strength, robustness_report
 from .readiness import active_rules, check_description, draft_pp_description, pp_presubmit, submission_readiness
 from .utils import html_to_text, recordset_to_dicts, to_csv
 
-__version__ = "1.5.3"
+__version__ = "1.5.4"
 
 
 def login(email: str | None = None, password: str | None = None, force: bool = False):
